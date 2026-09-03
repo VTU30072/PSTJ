@@ -17,7 +17,6 @@ class Player{
         this.score = score;
     }
 }
-
 class Solution {
 
     public static void main(String[] args) {
