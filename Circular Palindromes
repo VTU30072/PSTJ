@@ -1,0 +1,195 @@
+import java.io.*;
+import java.util.*;
+import static java.util.stream.Collectors.joining;
+
+class Result {
+
+
+    public static List<Integer> circularPalindromes(String s) {
+
+        int n = s.length();
+        String doubled = s + s;
+
+        int m = 2 * doubled.length() + 1;
+
+        char[] transformed = new char[m];
+
+        for (int i = 0; i < m; i++) {
+            if (i % 2 == 0) {
+                transformed[i] = '#';
+            } else {
+                transformed[i] = doubled.charAt(i / 2);
+            }
+        }
+
+        int[] p = new int[m];
+
+        int center = 0;
+        int right = 0;
+
+        for (int i = 0; i < m; i++) {
+
+            int mirror = 2 * center - i;
+
+            if (i < right) {
+                p[i] = Math.min(right - i, p[mirror]);
+            }
+
+            while (i - p[i] - 1 >= 0
+                    && i + p[i] + 1 < m
+                    && transformed[i - p[i] - 1]
+                       == transformed[i + p[i] + 1]) {
+
+                p[i]++;
+            }
+
+            if (i + p[i] > right) {
+                center = i;
+                right = i + p[i];
+            }
+        }
+
+        SparseTable rmq = new SparseTable(p);
+
+        List<Integer> result = new ArrayList<>(n);
+
+        for (int k = 0; k < n; k++) {
+
+            int left = 2 * k + 1;
+            int rightBoundary = 2 * (k + n - 1) + 1;
+
+            int low = 1;
+            int high = n;
+            int best = 1;
+
+            while (low <= high) {
+
+                int len = (low + high) >>> 1;
+
+                int centerLeft = left + len - 1;
+                int centerRight = rightBoundary - len + 1;
+
+                boolean possible = false;
+
+                if (centerLeft <= centerRight) {
+
+                    int maxRadius =
+                            rmq.query(centerLeft, centerRight);
+
+                    if (maxRadius >= len) {
+                        possible = true;
+                    }
+                }
+
+                if (possible) {
+                    best = len;
+                    low = len + 1;
+                } else {
+                    high = len - 1;
+                }
+            }
+
+            result.add(best);
+        }
+
+        return result;
+    }
+
+    private static class SparseTable {
+
+        private final int[][] table;
+        private final int[] log;
+
+        SparseTable(int[] values) {
+
+            int n = values.length;
+
+            log = new int[n + 1];
+
+            for (int i = 2; i <= n; i++) {
+                log[i] = log[i / 2] + 1;
+            }
+
+            int levels = log[n] + 1;
+
+            table = new int[levels][n];
+
+            for (int i = 0; i < n; i++) {
+                table[0][i] = values[i];
+            }
+
+            for (int k = 1; k < levels; k++) {
+
+                int length = 1 << k;
+                int half = length >> 1;
+
+                for (int i = 0;
+                     i + length <= n;
+                     i++) {
+
+                    table[k][i] = Math.max(
+                            table[k - 1][i],
+                            table[k - 1][i + half]
+                    );
+                }
+            }
+        }
+
+
+      
+        int query(int left, int right) {
+
+            if (left > right) {
+                return 0;
+            }
+
+            int length = right - left + 1;
+
+            int k = log[length];
+
+            return Math.max(
+                    table[k][left],
+                    table[k][right - (1 << k) + 1]
+            );
+        }
+    }
+}
+
+
+public class Solution {
+
+    public static void main(String[] args) throws IOException {
+
+        BufferedReader bufferedReader =
+                new BufferedReader(
+                        new InputStreamReader(System.in)
+                );
+
+        BufferedWriter bufferedWriter =
+                new BufferedWriter(
+                        new FileWriter(
+                                System.getenv("OUTPUT_PATH")
+                        )
+                );
+
+        int n = Integer.parseInt(
+                bufferedReader.readLine().trim()
+        );
+
+        String s = bufferedReader.readLine().trim();
+
+        List<Integer> result =
+                Result.circularPalindromes(s);
+
+        bufferedWriter.write(
+                result.stream()
+                        .map(Object::toString)
+                        .collect(joining("\n"))
+        );
+
+        bufferedWriter.newLine();
+
+        bufferedReader.close();
+        bufferedWriter.close();
+    }
+}
